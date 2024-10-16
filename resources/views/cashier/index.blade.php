@@ -16,14 +16,14 @@
           <div class="categories">
             @foreach($categories as $category)
               <button class="btn btn-primary filter-category" data-category-id="{{ $category->id }}">
-                <div class="bg-white p-[16px] rounded-[8px] mr-[16px] border border-[#E9EFEC]">
+                <div class="bg-white p-[16px] rounded-[8px] mr-[16px] border border-[#E9EFEC] hover:shadow-md">
                   <img src="img/food-icon.svg" alt="">
                   <p class="poppins-regular mt-[16px]">{{ $category->name }}</p>
                 </div>
               </button>
             @endforeach
             <button class="btn btn-secondary filter-category" data-category-id="all">
-              <div class="bg-white p-[16px] rounded-[8px] mr-[16px] border border-[#E9EFEC]">
+              <div class="bg-white p-[16px] rounded-[8px] mr-[16px] border border-[#E9EFEC] hover:shadow-md">
                 <img src="img/food-icon.svg" alt="">
                 <p class="poppins-regular mt-[16px] sm:mt-[16px]">All Menu</p>
               </div>
@@ -73,7 +73,7 @@
                                     <img src="${menu.image ? `/storage/img/${menu.image}` : '/img/default-icon.svg'}" alt="${menu.name}" class="rounded-[8px] w-48 h-48">                                      
                                     <p class="mt-[16px] mb-[4px] text-base poppins-regular">${menu.name}</p>
                                     <p class="text-xl poppins-medium">Rp. ${menu.price}</p>
-                                    <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 add-to-cart" data-id="${menu.id}" data-price="${menu.price}" data-name="${menu.name}">
+                                    <button class="mt-[16px] px-[24px] py-[12px] bg-[#6A9C89] text-white rounded hover:bg-[#16423C] add-to-cart" data-id="${menu.id}" data-price="${menu.price}" data-name="${menu.name}">
                                         Tambah ke Keranjang
                                     </button>
                                 </div>
@@ -168,28 +168,46 @@
             updateCart();
         }
 
+        // Checkout
         document.getElementById('checkout-btn').addEventListener('click', function() {
-          fetch('/checkout', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-                  'X-CSRF-TOKEN': '{{ csrf_token() }}'
-              },
-              body: JSON.stringify({ cart: cart })
-          })
-          .then(response => response.json())
-          .then(data => {
-              if (data.success) {
-                  alert('Checkout berhasil! Order ID: ' + data.order_id);
-                  cart = []; // Kosongkan keranjang setelah checkout berhasil
-                  updateCart(); // Perbarui tampilan keranjang
-              } else {
-                  alert('Checkout gagal: ' + data.message);
-              }
-          })
-          .catch(error => {
-              alert('Terjadi kesalahan saat checkout: ' + error.message);
-          });
+            fetch('/checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ cart: cart })
+            })
+            .then(response => {
+                // Periksa apakah response status berhasil
+                if (!response.ok) {
+                    throw new Error('Gagal mengambil data PDF');
+                }
+                return response.blob(); // Terima respons dalam bentuk Blob
+            })
+            .then(blob => {
+                // Membuat URL Blob untuk file PDF yang akan diunduh
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', 'receipt.pdf'); // Nama file PDF
+                document.body.appendChild(link);
+                link.click(); // Unduh file
+                link.parentNode.removeChild(link); // Hapus link setelah di-download
+                
+                // Cetak langsung dari URL Blob tanpa membuka jendela baru
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none'; // Sembunyikan iframe
+                iframe.src = url; // Set iframe ke URL Blob PDF
+                document.body.appendChild(iframe); // Tambahkan ke dokumen
+                
+                iframe.onload = function() {
+                    iframe.contentWindow.print(); // Cetak PDF setelah iframe selesai memuat
+                };
+            })
+            .catch(error => {
+                alert('Terjadi kesalahan saat checkout: ' + error.message);
+            });
         });
     });
   </script>

@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
+use PDF;
 
 class CashierController extends Controller
 {
@@ -54,7 +55,7 @@ class CashierController extends Controller
 
             // Buat order baru
             $order = new Order();
-            $order->status = 'pending'; // Set status awal sebagai pending
+            $order->status = 'Sudah Dibayar'; // Set status awal sebagai pending
             $order->save();
 
             // Loop item di keranjang dan simpan sebagai OrderItem
@@ -81,13 +82,12 @@ class CashierController extends Controller
             $order->total = $totalPrice;
             $order->save();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Checkout berhasil!',
-                'order_id' => $order->id,
-            ]);
+            // Generate PDF receipt
+            $pdf = PDF::loadView('receipt', ['order' => $order, 'cartItems' => $cart])
+              ->setPaper([0, 0, 226.77, 1000]);
+            return $pdf->download('receipt-order-' . $order->id . '.pdf');
+
         } catch (\Exception $e) {
-            // Tangkap kesalahan dan kirim pesan
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat checkout: ' . $e->getMessage(),
